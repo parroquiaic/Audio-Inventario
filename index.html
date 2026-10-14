@@ -36,7 +36,12 @@
            border:1px solid currentColor; color:var(--mut); white-space:nowrap; }
   .badge.ok { color:var(--ok); } .badge.warn { color:var(--warn); } .badge.bad { color:var(--bad); }
   .chip { background:var(--chip); border-radius:99px; padding:2px 10px; font-size:12px; white-space:nowrap; }
-  .filtros { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
+  .chipb { padding:6px 12px; border-radius:99px; font-size:14px; font-weight:600; }
+  .chipb[aria-pressed=true] { background:var(--pri); color:var(--pri-t); border-color:var(--pri); }
+  .destinos { display:grid; gap:8px; margin-top:4px; }
+  .destinos button[aria-pressed=true] { background:var(--pri); color:var(--pri-t); border-color:var(--pri); }
+  button.peq { padding:6px 12px; font-size:14px; margin-bottom:10px; }
   .vacio { color:var(--mut); text-align:center; padding:24px 0; }
   .err { color:var(--bad); } .okm { color:var(--ok); }
   .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
@@ -71,11 +76,11 @@
   <!-- CONSULTAR -->
   <section id="t-consultar">
     <input id="q" type="search" placeholder="Buscar por ID, nombre, marca, notas…" aria-label="Buscar">
-    <div class="filtros">
-      <label>Tipo<select id="fTipo"></select></label>
-      <label>Estado<select id="fEstado"></select></label>
-      <label>Ubicación<select id="fUbic"></select></label>
-    </div>
+    <div class="sub" style="margin-top:12px">Ubicación</div>
+    <div id="chipsUbic" class="chips"></div>
+    <div class="sub">Estado</div>
+    <div id="chipsEstado" class="chips"></div>
+    <label>Tipo<select id="fTipo"></select></label>
     <p class="sub" id="cuenta"></p>
     <div id="lista"></div>
   </section>
@@ -84,18 +89,13 @@
   <section id="t-actividad" hidden>
     <div class="card">
       <h2>Registrar actividad</h2>
-      <p class="sub">Agrega todas las etiquetas y registra una sola vez. La lista se guarda en este celular hasta que la envíes.</p>
+      <p class="sub">Agrega todas las etiquetas y registra una sola vez. Los equipos no salen de la parroquia: aquí solo se anota a dónde se llevan y en qué estado quedan. La lista se guarda en este celular hasta que la envíes.</p>
       <label for="actividad">Actividad</label>
       <input id="actividad" placeholder="Ej. Misa del domingo, retiro de jóvenes…" autocomplete="off">
       <label for="responsable">Responsable</label>
       <input id="responsable" placeholder="Tu nombre" autocomplete="name">
-      <label>Acción</label>
-      <div class="seg">
-        <button type="button" data-acc="Salida">Salida</button>
-        <button type="button" data-acc="Entrada">Entrada</button>
-      </div>
-      <label for="ubicacion">Ubicación (donde quedan los equipos)</label>
-      <select id="ubicacion"></select>
+      <label>¿Dónde quedan los equipos?</label>
+      <div id="destinos" class="destinos"></div>
       <div id="pinBox" hidden>
         <label for="pin">PIN</label>
         <input id="pin" type="password" inputmode="numeric" autocomplete="off">
@@ -181,11 +181,11 @@
   // ---------- Estado ----------
   let D = { cables: [], tipos: [], estados: [], ubicaciones: [], requierePin: false };
   const porId = id => D.cables.find(c => c.id.toUpperCase() === String(id).trim().toUpperCase());
-  let draft = Object.assign({ actividad: '', responsable: '', accion: 'Salida', ubicacion: '', items: [] }, load('inv_draft', {}));
+  let draft = Object.assign({ actividad: '', responsable: '', destino: null, items: [] }, load('inv_draft', {}));
   if (!Array.isArray(draft.items)) draft.items = [];
   const saveDraft = () => save('inv_draft', draft);
   let hist = null;
-  const F = { q: '', tipo: '', estado: '', ubic: '' };
+  const F = { q: '', tipo: '', estado: '', ubic: '', todos: false };
 
   function claseEstado(e) {
     e = (e || '').toLowerCase();
@@ -214,20 +214,51 @@
   ['consultar', 'actividad', 'historial'].forEach(x => { $('#n-' + x).onclick = () => ir(x); });
 
   // ---------- Consultar ----------
+  const hayFiltro = () => !!(F.q.trim() || F.tipo || F.estado || F.ubic || F.todos);
+
+  function chip(texto, activo, onclick) {
+    return h('button', { type: 'button', class: 'chipb', 'aria-pressed': String(activo), onclick }, texto);
+  }
+
+  function pintarChips() {
+    const cuenta = (k, v) => D.cables.filter(c => c[k] === v).length;
+    const u = $('#chipsUbic'); u.textContent = '';
+    D.ubicaciones.forEach(x => u.append(chip(x + ' (' + cuenta('ubicacion', x) + ')', F.ubic === x,
+      () => { F.ubic = F.ubic === x ? '' : x; pintarChips(); pintarLista(); })));
+    const e = $('#chipsEstado'); e.textContent = '';
+    D.estados.forEach(x => e.append(chip(x + ' (' + cuenta('estado', x) + ')', F.estado === x,
+      () => { F.estado = F.estado === x ? '' : x; pintarChips(); pintarLista(); })));
+  }
+
+  function limpiarFiltros() {
+    F.q = ''; F.tipo = ''; F.estado = ''; F.ubic = ''; F.todos = false;
+    $('#q').value = ''; $('#fTipo').value = '';
+    pintarChips(); pintarLista();
+  }
+
   function pintarLista() {
+    const total = D.cables.length;
+    const box = $('#lista'); box.textContent = '';
+    if (!hayFiltro()) {
+      $('#cuenta').textContent = total + (total === 1 ? ' equipo en total' : ' equipos en total');
+      box.append(h('div', { class: 'vacio' },
+        h('p', null, 'Busca por ID o nombre, o toca un filtro para ver los equipos.'),
+        h('button', { onclick: () => { F.todos = true; pintarLista(); } }, 'Ver todos (' + total + ')')));
+      return;
+    }
     const q = F.q.trim().toLowerCase();
     const r = D.cables.filter(c =>
       (!F.tipo || c.tipo === F.tipo) && (!F.estado || c.estado === F.estado) && (!F.ubic || c.ubicacion === F.ubic) &&
-      (!q || [c.id, c.descripcion, c.tipo, c.marca, c.asignado, c.notas, c.color].join(' ').toLowerCase().includes(q)));
-    $('#cuenta').textContent = r.length + ' de ' + D.cables.length + ' elementos';
-    const box = $('#lista'); box.textContent = '';
-    if (!r.length) { box.append(h('p', { class: 'vacio' }, 'No hay elementos con ese filtro.')); return; }
+      (!q || [c.id, c.descripcion, c.tipo, c.marca, c.ultimaActividad, c.notas, c.color].join(' ').toLowerCase().includes(q)));
+    $('#cuenta').textContent = r.length + ' de ' + total + ' equipos';
+    box.append(h('button', { class: 'peq', onclick: limpiarFiltros }, 'Quitar filtros / ocultar lista'));
+    if (!r.length) { box.append(h('p', { class: 'vacio' }, 'No hay equipos con ese filtro.')); return; }
     r.forEach(c => box.append(
       h('button', { class: 'item', onclick: () => abrirFicha(c.id) },
         h('div', { class: 'fila' },
           h('strong', null, c.descripcion || c.tipo || c.id),
           h('span', { class: 'badge ' + claseEstado(c.estado) }, c.estado || '—')),
-        h('div', { class: 'sub' }, c.id + ' · ' + (c.ubicacion || 'sin ubicación') + (c.asignado ? ' · ' + c.asignado : '')))));
+        h('div', { class: 'sub' }, c.id + ' · ' + (c.ubicacion || 'sin ubicación')))));
   }
 
   function abrirFicha(id) {
@@ -235,7 +266,7 @@
     if (!c) { toast('No encontré el ID ' + id + ' en el inventario.', true); return; }
     const dlg = $('#dlg'); dlg.textContent = '';
     const campos = [['Tipo', 'tipo'], ['Longitud (m)', 'longitud'], ['Conectores', 'conectores'], ['Marca / Modelo', 'marca'],
-                    ['Color de cinta', 'color'], ['Ubicación', 'ubicacion'], ['Asignado a', 'asignado'],
+                    ['Color de cinta', 'color'], ['Ubicación', 'ubicacion'], ['Última actividad', 'ultimaActividad'],
                     ['Última revisión', 'revision'], ['Notas', 'notas']];
     const dl = h('dl');
     campos.forEach(([et, k]) => { if (c[k]) dl.append(h('dt', null, et), h('dd', null, c[k])); });
@@ -254,8 +285,6 @@
 
   $('#q').oninput = e => { F.q = e.target.value; pintarLista(); };
   $('#fTipo').onchange = e => { F.tipo = e.target.value; pintarLista(); };
-  $('#fEstado').onchange = e => { F.estado = e.target.value; pintarLista(); };
-  $('#fUbic').onchange = e => { F.ubic = e.target.value; pintarLista(); };
 
   // ---------- Actividad ----------
   function extraerId(t) {
@@ -295,7 +324,7 @@
         h('div', { class: 'fila' },
           h('strong', null, it.id + ' · ' + (c.descripcion || c.tipo || '')),
           h('button', { class: 'x', 'aria-label': 'Quitar ' + it.id, onclick: () => { draft.items.splice(i, 1); saveDraft(); pintarItems(); } }, '✕')),
-        h('div', { class: 'sub' }, 'Ahora: ' + (c.ubicacion || '—') + (c.asignado ? ' · ' + c.asignado : '')),
+        h('div', { class: 'sub' }, 'Ahora: ' + (c.ubicacion || '—') + (c.ultimaActividad ? ' · última actividad: ' + c.ultimaActividad : '')),
         h('label', null, 'Estado', sel),
         h('label', null, 'Observación (opcional)',
           h('input', { value: it.observacion, placeholder: 'Ej. se escucha ruido en un extremo',
@@ -317,57 +346,34 @@
   $('#responsable').value = draft.responsable;
   $('#actividad').oninput = e => { draft.actividad = e.target.value; saveDraft(); };
   $('#responsable').oninput = e => { draft.responsable = e.target.value; saveDraft(); };
-  $('#ubicacion').onchange = e => { draft.ubicacion = e.target.value; saveDraft(); };
-  function pintarAccion() {
-    document.querySelectorAll('[data-acc]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.acc === draft.accion)));
+  function pintarDestinos() {
+    const box = $('#destinos'); box.textContent = '';
+    const op = D.ubicaciones.map(u => [u, 'Mover a ' + u]).concat([['', 'No cambian de lugar (solo estado)']]);
+    op.forEach(([val, txt]) => box.append(h('button', {
+      type: 'button', 'aria-pressed': String(draft.destino === val),
+      onclick: () => { draft.destino = val; saveDraft(); pintarDestinos(); }
+    }, txt)));
   }
-  document.querySelectorAll('[data-acc]').forEach(b => { b.onclick = () => { draft.accion = b.dataset.acc; saveDraft(); pintarAccion(); }; });
-  pintarAccion();
-
-  // Lectura continua de NFC (Chrome en Android). En iPhone no existe: se usa la lectura nativa del sistema.
-  let nfc = null;
-  async function alternarNFC() {
-    const b = $('#btnNfc');
-    if (nfc) { nfc.abort(); nfc = null; b.textContent = 'Leer etiquetas con NFC'; b.setAttribute('aria-pressed', 'false'); return; }
-    if (!('NDEFReader' in window)) {
-      toast('Este navegador no lee NFC desde la página. Pasa la etiqueta por el celular y, al abrirse el sitio, toca "Agregar a la actividad".', true);
-      return;
-    }
-    try {
-      const r = new NDEFReader(); nfc = new AbortController();
-      await r.scan({ signal: nfc.signal });
-      b.textContent = 'Leyendo… (toca para parar)'; b.setAttribute('aria-pressed', 'true');
-      r.onreading = ev => {
-        for (const rec of ev.message.records) {
-          let t = '';
-          try { t = new TextDecoder(rec.encoding || 'utf-8').decode(rec.data); } catch (e) {}
-          const id = extraerId(t);
-          if (id) agregar(id);
-        }
-      };
-    } catch (e) { nfc = null; toast('No se pudo activar el NFC: ' + (e.message || e), true); }
-  }
-  $('#btnNfc').onclick = alternarNFC;
 
   async function registrar() {
     const msg = $('#msgReg');
     const falla = t => { msg.textContent = t; msg.className = 'err'; };
     if (!draft.actividad.trim()) return falla('Escribe el nombre de la actividad.');
     if (!draft.responsable.trim()) return falla('Escribe quién registra.');
-    if (!draft.ubicacion) return falla('Elige la ubicación.');
+    if (draft.destino === null || draft.destino === undefined) return falla('Elige dónde quedan los equipos (o "No cambian de lugar").');
     if (!draft.items.length) return falla('Agrega al menos una etiqueta.');
     const btn = $('#btnReg'); btn.disabled = true;
     msg.textContent = 'Guardando…'; msg.className = '';
     try {
       const r = await apiPost({
         action: 'registrar', pin: $('#pin').value, actividad: draft.actividad.trim(), responsable: draft.responsable.trim(),
-        accion: draft.accion, ubicacion: draft.ubicacion,
+        destino: draft.destino,
         items: draft.items.map(i => ({ id: i.id, estado: i.estado, observacion: i.observacion }))
       });
       if (!r.ok) throw new Error(r.error || 'Error desconocido');
       draft.items = []; draft.actividad = ''; saveDraft();
       $('#actividad').value = '';
-      msg.textContent = 'Actividad registrada: ' + r.registrados + (r.registrados === 1 ? ' elemento' : ' elementos') + ' (' + r.codigo + ').';
+      msg.textContent = 'Actividad registrada: ' + r.registrados + (r.registrados === 1 ? ' equipo' : ' equipos') + ' (' + r.traslados + ' movidos de lugar, ' + r.revisiones + ' sin mover). Código ' + r.codigo + '.';
       msg.className = 'okm';
       hist = null;
       await cargar();
@@ -390,6 +396,11 @@
     }
   }
 
+  function destinoGrupo(grp) {
+    const u = [...new Set(grp.items.map(m => m.ubicacion).filter(Boolean))];
+    return u.length === 1 ? '→ ' + u[0] : '';
+  }
+
   function pintarHistorial() {
     const q = $('#hq').value.trim().toLowerCase();
     const box = $('#hlista'); box.textContent = '';
@@ -408,9 +419,10 @@
           h('div', { class: 'fila' },
             h('strong', null, m0.actividad || 'Movimiento sin actividad'),
             h('span', { class: 'chip' }, grp.items.length + (grp.items.length === 1 ? ' elemento' : ' elementos'))),
-          h('div', { class: 'sub' }, [m0.fecha, m0.accion, m0.ubicacion, m0.responsable].filter(Boolean).join(' · '))),
+          h('div', { class: 'sub' }, [m0.fecha, m0.responsable, destinoGrupo(grp)].filter(Boolean).join(' · '))),
         grp.items.map(m => h('div', { class: 'mov' },
           h('strong', null, m.id), ' ', m.descripcion || '',
+          m.accion ? h('span', { class: 'chip', style: 'margin-left:6px' }, m.accion) : null,
           m.observacion ? h('div', { class: 'sub' }, '“' + m.observacion + '”') : null))));
     });
   }
@@ -422,13 +434,10 @@
     if (!r.ok) throw new Error(r.error);
     D = r;
     llenar($('#fTipo'), D.tipos, 'Todos', F.tipo);
-    llenar($('#fEstado'), D.estados, 'Todos', F.estado);
-    llenar($('#fUbic'), D.ubicaciones, 'Todas', F.ubic);
-    llenar($('#ubicacion'), D.ubicaciones, 'Elige…', D.ubicaciones.includes(draft.ubicacion) ? draft.ubicacion : '');
     $('#ids').textContent = '';
     D.cables.forEach(c => $('#ids').append(h('option', { value: c.id }, c.descripcion)));
     $('#pinBox').hidden = !D.requierePin;
-    pintarLista(); pintarItems();
+    pintarChips(); pintarLista(); pintarDestinos(); pintarItems();
   }
 
   $('#btnRefrescar').onclick = async () => {
