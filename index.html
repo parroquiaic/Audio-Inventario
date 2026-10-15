@@ -201,7 +201,7 @@ function el(tag, props, ...hijos) {
       else if (v !== false && v != null) n.setAttribute(k, v === true ? '' : v);
     }
   }
-  for (const h of hijos.flat()) {
+  for (const h of hijos.flat(Infinity)) {
     if (h === null || h === undefined || h === false) continue;
     n.append(h.nodeType ? h : document.createTextNode(String(h)));
   }
