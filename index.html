@@ -5,463 +5,602 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inventario de audio</title>
 <style>
-  :root { --bg:#f4f5f7; --card:#fff; --txt:#1b1f24; --mut:#667085; --line:#e3e6ea; --pri:#1f3864; --pri-t:#fff;
-          --ok:#1a7f4b; --warn:#b54708; --bad:#b42318; --chip:#eef1f6; }
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --tx: #101828; --tx2: #475467; --line: #d0d5dd;
+    --pri: #1f3a5f; --pri-tx: #ffffff; --sel: #e8eef7;
+    --ok: #067647; --ok-bg: #dcfae6; --warn: #93370d; --warn-bg: #fef0c7; --bad: #b42318; --bad-bg: #fee4e2;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#10141a; --card:#1a2029; --txt:#eceff3; --mut:#9aa4b2; --line:#2b323d; --pri:#6f93e0; --pri-t:#0c1220;
-            --ok:#4cc38a; --warn:#f0a050; --bad:#f07a70; --chip:#242c38; }
+    :root {
+      --bg: #0f1419; --card: #18202a; --tx: #eef2f6; --tx2: #a4b0bf; --line: #334155;
+      --pri: #7fa8e0; --pri-tx: #0b1522; --sel: #1e2b3d;
+      --ok: #75e0a7; --ok-bg: #0f3a28; --warn: #fec84b; --warn-bg: #4a3207; --bad: #fda29b; --bad-bg: #4d1511;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--txt); padding-bottom:76px;
-         font:16px/1.4 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
-  header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line);
-           display:flex; align-items:center; justify-content:space-between; padding:10px 16px; }
-  h1 { font-size:18px; margin:0; color:var(--pri); }
-  main { max-width:720px; margin:0 auto; padding:16px; }
-  section[hidden] { display:none; }
-  h2 { font-size:17px; margin:0 0 8px; }
-  label { display:block; font-size:13px; color:var(--mut); margin:10px 0 0; }
-  input, select, button { font:inherit; }
-  input, select { width:100%; padding:10px; margin-top:4px; border:1px solid var(--line); border-radius:8px;
-                  background:var(--bg); color:var(--txt); }
-  button { cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--txt);
-           border-radius:10px; padding:11px 14px; font-weight:600; }
-  button.pri { background:var(--pri); color:var(--pri-t); border-color:var(--pri); }
-  button:disabled { opacity:.5; cursor:default; }
-  .card, .item, details.grupo { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:10px; }
-  button.item { display:block; width:100%; text-align:left; font-weight:400; }
-  .fila { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
-  .sub { color:var(--mut); font-size:14px; margin-top:2px; }
-  .badge { display:inline-block; padding:1px 9px; border-radius:99px; font-size:12px; font-weight:700;
-           border:1px solid currentColor; color:var(--mut); white-space:nowrap; }
-  .badge.ok { color:var(--ok); } .badge.warn { color:var(--warn); } .badge.bad { color:var(--bad); }
-  .chip { background:var(--chip); border-radius:99px; padding:2px 10px; font-size:12px; white-space:nowrap; }
-  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
-  .chipb { padding:6px 12px; border-radius:99px; font-size:14px; font-weight:600; }
-  .chipb[aria-pressed=true] { background:var(--pri); color:var(--pri-t); border-color:var(--pri); }
-  .destinos { display:grid; gap:8px; margin-top:4px; }
-  .destinos button[aria-pressed=true] { background:var(--pri); color:var(--pri-t); border-color:var(--pri); }
-  button.peq { padding:6px 12px; font-size:14px; margin-bottom:10px; }
-  .vacio { color:var(--mut); text-align:center; padding:24px 0; }
-  .err { color:var(--bad); } .okm { color:var(--ok); }
-  .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
-  .seg button[aria-pressed=true] { background:var(--pri); color:var(--pri-t); border-color:var(--pri); }
-  .add { display:flex; gap:8px; align-items:flex-end; }
-  .add > div { flex:1; }
-  .x { padding:2px 9px; border-radius:8px; }
-  .botones { display:grid; gap:8px; margin-top:14px; }
-  details.grupo summary { cursor:pointer; list-style:none; }
-  details.grupo summary::-webkit-details-marker { display:none; }
-  .mov { padding:8px 0 0; margin-top:8px; border-top:1px solid var(--line); font-size:15px; }
-  dl { display:grid; grid-template-columns:auto 1fr; gap:6px 12px; font-size:15px; margin:12px 0 0; }
-  dt { color:var(--mut); } dd { margin:0; word-break:break-word; }
-  nav { position:fixed; bottom:0; left:0; right:0; z-index:5; display:flex; background:var(--card); border-top:1px solid var(--line); }
-  nav button { flex:1; border:0; border-radius:0; background:none; color:var(--mut); padding:14px 4px; font-size:13px; }
-  nav button[aria-selected=true] { color:var(--pri); box-shadow:inset 0 3px 0 var(--pri); }
-  #badge { background:var(--pri); color:var(--pri-t); border-radius:99px; padding:0 7px; margin-left:4px; font-size:12px; }
-  dialog { width:min(92vw,460px); border:1px solid var(--line); border-radius:14px; background:var(--card); color:var(--txt); padding:18px; }
-  dialog::backdrop { background:rgba(0,0,0,.5); }
-  #toast { position:fixed; left:50%; bottom:90px; transform:translateX(-50%); max-width:90vw; background:var(--txt); color:var(--bg);
-           padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; pointer-events:none; transition:opacity .2s; z-index:20; }
-  #toast.show { opacity:1; } #toast.bad { background:var(--bad); color:#fff; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--tx);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 48px; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 10px; }
+  h1 { margin: 0; font-size: 1.35rem; line-height: 1.2; }
+  .sub { margin: 2px 0 0; font-size: .85rem; color: var(--tx2); }
+
+  .btn {
+    min-height: 44px; padding: 0 16px; border: 1px solid var(--pri); border-radius: 10px;
+    background: var(--pri); color: var(--pri-tx); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.sec { background: transparent; color: var(--pri); }
+  .btn.link { border: 0; background: transparent; color: var(--pri); padding: 0 4px; min-height: 40px; font-weight: 600; }
+  .btn:focus-visible, input:focus-visible, summary:focus-visible, .chip:focus-visible, .tab:focus-visible {
+    outline: 3px solid var(--pri); outline-offset: 2px;
+  }
+
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .tab { min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--tx2); font: inherit; font-weight: 600; cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--pri); color: var(--pri-tx); }
+  .badge { display: inline-block; min-width: 22px; margin-left: 6px; padding: 0 6px; border-radius: 11px; background: var(--sel); color: var(--pri); font-size: .8rem; line-height: 22px; }
+  .tab[aria-selected="true"] .badge { background: var(--pri-tx); color: var(--pri); }
+
+  .aviso { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: .92rem; }
+  .aviso.error { background: var(--bad-bg); color: var(--bad); }
+
+  .seg { display: flex; gap: 8px; margin: 16px 0 10px; }
+  .chip { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--tx); font: inherit; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--sel); border-color: var(--pri); color: var(--pri); font-weight: 600; }
+
+  label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: .92rem; }
+  input[type="text"], input[type="search"], input[type="date"], select {
+    width: 100%; min-height: 46px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--tx); font: inherit;
+  }
+  select { margin-top: 10px; }
+  .row { display: flex; gap: 8px; }
+  .row > input { flex: 1; min-width: 0; }
+
+  .count { margin: 10px 0 8px; font-size: .85rem; color: var(--tx2); }
+  .lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .item {
+    width: 100%; text-align: left; display: block; padding: 12px 14px; border: 1px solid var(--line);
+    border-radius: 12px; background: var(--card); color: var(--tx); font: inherit; cursor: pointer;
+  }
+  .item:hover { border-color: var(--pri); }
+  .item .l1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .id { font: 600 .82rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--tx2); }
+  .nombre { font-weight: 600; }
+  .meta { margin-top: 2px; font-size: .88rem; color: var(--tx2); }
+  .tag { display: inline-block; padding: 1px 9px; border-radius: 10px; font-size: .78rem; font-weight: 600; background: var(--sel); color: var(--pri); }
+  .tag.ok { background: var(--ok-bg); color: var(--ok); }
+  .tag.warn { background: var(--warn-bg); color: var(--warn); }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+
+  .card { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+  .card h2 { margin: 2px 0 12px; font-size: 1.2rem; }
+  dl { margin: 0; display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; }
+  dt { color: var(--tx2); font-size: .9rem; }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  h3 { margin: 20px 0 8px; font-size: 1rem; }
+  .hist { margin: 0; padding-left: 18px; }
+  .hist li { margin: 4px 0; }
+  .acciones { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .vacio { padding: 18px 8px; text-align: center; color: var(--tx2); }
+
+  details.act { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 0 14px; }
+  details.act + details.act { margin-top: 8px; }
+  details.act summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; font-weight: 600; }
+  details.act ul { margin: 0 0 12px; padding-left: 18px; font-size: .92rem; }
+
+  .uso { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+  .uso li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+  .quitar { min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--bad); font: inherit; cursor: pointer; }
+  .final { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--ok-bg); color: var(--ok); }
+  .msg.error { background: var(--bad-bg); color: var(--bad); }
+  .ayuda { margin: 6px 0 0; font-size: .85rem; color: var(--tx2); }
 </style>
 </head>
 <body>
-<header>
-  <h1>Inventario de audio</h1>
-  <button id="btnRefrescar" aria-label="Actualizar datos" title="Actualizar">↻</button>
-</header>
+<div class="wrap">
 
-<main>
-  <!-- CONSULTAR -->
-  <section id="t-consultar">
-    <input id="q" type="search" placeholder="Buscar por ID, nombre, marca, notas…" aria-label="Buscar">
-    <div class="sub" style="margin-top:12px">Ubicación</div>
-    <div id="chipsUbic" class="chips"></div>
-    <div class="sub">Estado</div>
-    <div id="chipsEstado" class="chips"></div>
-    <label>Tipo<select id="fTipo"></select></label>
-    <p class="sub" id="cuenta"></p>
-    <div id="lista"></div>
-  </section>
+  <header class="top">
+    <div>
+      <h1>Inventario de audio</h1>
+      <p class="sub" id="estadoCarga">Sin cargar</p>
+    </div>
+    <button class="btn" id="btnActualizar" type="button">Actualizar</button>
+  </header>
 
-  <!-- ACTIVIDAD -->
-  <section id="t-actividad" hidden>
-    <div class="card">
-      <h2>Registrar actividad</h2>
-      <p class="sub">Agrega todas las etiquetas y registra una sola vez. Los equipos no salen de la parroquia: aquí solo se anota a dónde se llevan y en qué estado quedan. La lista se guarda en este celular hasta que la envíes.</p>
-      <label for="actividad">Actividad</label>
-      <input id="actividad" placeholder="Ej. Misa del domingo, retiro de jóvenes…" autocomplete="off">
-      <label for="responsable">Responsable</label>
-      <input id="responsable" placeholder="Tu nombre" autocomplete="name">
-      <label>¿Dónde quedan los equipos?</label>
-      <div id="destinos" class="destinos"></div>
-      <div id="pinBox" hidden>
-        <label for="pin">PIN</label>
-        <input id="pin" type="password" inputmode="numeric" autocomplete="off">
-      </div>
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button class="tab" role="tab" id="tabConsultar" data-vista="consultar" aria-selected="true">Consultar</button>
+    <button class="tab" role="tab" id="tabActividad" data-vista="actividad" aria-selected="false">Actividad<span class="badge" id="badge" hidden>0</span></button>
+  </nav>
+
+  <div id="aviso" class="aviso" role="alert" hidden></div>
+
+  <!-- ===== CONSULTAR ===== -->
+  <main id="vistaConsultar">
+
+    <div class="seg" id="modos">
+      <button class="chip" type="button" data-modo="equipos" aria-pressed="true">Equipos</button>
+      <button class="chip" type="button" data-modo="actividades" aria-pressed="false">Actividades recientes</button>
     </div>
 
-    <div class="card">
-      <h2>Etiquetas de esta actividad <span id="badge2" class="chip">0</span></h2>
-      <div class="add">
-        <div><label for="idAdd">ID de la etiqueta</label>
-          <input id="idAdd" list="ids" placeholder="Ej. CAB-001" autocapitalize="characters" autocomplete="off"></div>
-        <button id="btnAdd" type="button">Agregar</button>
-      </div>
-      <datalist id="ids"></datalist>
-      <div class="botones"><button id="btnNfc" type="button" aria-pressed="false">Leer etiquetas con NFC</button></div>
+    <section id="panelEquipos">
+      <label for="buscar" style="margin-top:0">Buscar por ID, descripción, tipo, marca o conectores</label>
+      <input type="search" id="buscar" autocomplete="off" placeholder="Ej. CAB-001, XLR, micrófono">
+      <select id="filtroTipo" aria-label="Filtrar por tipo"></select>
+      <p class="count" id="contador"></p>
+      <ul class="lista" id="lista"></ul>
+    </section>
+
+    <section id="panelActividades" hidden>
+      <div id="listaActividades"></div>
+    </section>
+
+    <section id="panelDetalle" hidden></section>
+  </main>
+
+  <!-- ===== ACTIVIDAD ===== -->
+  <main id="vistaActividad" hidden>
+    <label for="actNombre" style="margin-top:16px">Nombre de la actividad</label>
+    <input type="text" id="actNombre" maxlength="120" autocomplete="off" placeholder="Ej. Misa dominical">
+
+    <label for="actFecha">Fecha</label>
+    <input type="date" id="actFecha">
+
+    <label for="actEquipo">Agregar un equipo (ID o nombre)</label>
+    <div class="row">
+      <input type="text" id="actEquipo" list="listaEquipos" autocomplete="off" placeholder="Ej. CAB-001">
+      <button class="btn sec" id="btnAgregar" type="button">Agregar</button>
     </div>
+    <datalist id="listaEquipos"></datalist>
+    <p class="ayuda">También puedes escanear una etiqueta NFC, tocar “Agregar a la actividad” en la ficha y volver a escanear la siguiente. La lista se conserva en este teléfono hasta que envíes el registro.</p>
 
-    <div id="items"></div>
-    <div class="botones">
-      <button id="btnReg" class="pri" type="button" disabled>Registrar actividad (0)</button>
-      <button id="btnVaciar" type="button">Vaciar lista</button>
+    <h3>Equipos usados <span id="totalUso"></span></h3>
+    <ul class="uso" id="listaUso"></ul>
+
+    <div class="final">
+      <button class="btn" id="btnEnviar" type="button">Enviar registro</button>
+      <button class="btn sec" id="btnVaciar" type="button">Vaciar lista</button>
     </div>
-    <p id="msgReg" role="status"></p>
-  </section>
+    <div id="mensajeAct" role="status" aria-live="polite" hidden></div>
+  </main>
 
-  <!-- HISTORIAL -->
-  <section id="t-historial" hidden>
-    <input id="hq" type="search" placeholder="Filtrar por ID, actividad o responsable…" aria-label="Filtrar historial">
-    <p class="sub">Últimos movimientos, agrupados por actividad.</p>
-    <div id="hlista"></div>
-  </section>
-</main>
-
-<nav>
-  <button id="n-consultar" aria-selected="true">Consultar</button>
-  <button id="n-actividad" aria-selected="false">Actividad<span id="badge" hidden></span></button>
-  <button id="n-historial" aria-selected="false">Historial</button>
-</nav>
-
-<dialog id="dlg"></dialog>
-<div id="toast" role="status"></div>
+  <noscript><p class="aviso error">Esta página necesita JavaScript.</p></noscript>
+</div>
 
 <script>
-(function () {
-  'use strict';
+'use strict';
 
-  // >>> Pega aquí la URL de tu aplicación web de Apps Script (la que termina en /exec) <<<
-  const API_URL = 'https://script.google.com/macros/s/AKfycbwet0a-s0RCVJ0fUYuj1tdnzYPDqvslYATx2vBCrsejp8G6SOu8G90V4sqDA4n3Qv2v_Q/exec';
+/* ================= CONFIGURACIÓN ================= */
+// Pega aquí la URL de la implementación de Apps Script (termina en /exec).
+const API_URL = 'PEGA_AQUI_LA_URL_DE_APPS_SCRIPT';
 
-  const $ = s => document.querySelector(s);
+/* ================= ESTADO ================= */
+const CLAVE_BORRADOR = 'inventario_audio_actividad';
+const estado = {
+  vista: 'consultar', modo: 'equipos', tipo: 'Todos', busqueda: '',
+  equipos: [], actividades: [], detalle: null, cargando: false, hora: null
+};
+let borrador = cargarBorrador();
 
-  // Crea elementos sin usar innerHTML (los datos de la hoja se muestran siempre como texto)
-  function h(tag, attrs, ...kids) {
-    const e = document.createElement(tag);
-    for (const k in (attrs || {})) {
-      const v = attrs[k];
-      if (v === false || v == null) continue;
-      if (k === 'class') e.className = v;
-      else if (k === 'value') e.value = v;
-      else if (k.slice(0, 2) === 'on') e[k] = v;
-      else e.setAttribute(k, v === true ? '' : v);
+/* ================= UTILIDADES ================= */
+const $ = (s) => document.querySelector(s);
+
+function el(tag, props, ...hijos) {
+  const n = document.createElement(tag);
+  if (props) {
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') n.className = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else if (v !== false && v != null) n.setAttribute(k, v === true ? '' : v);
     }
-    kids.flat(Infinity).forEach(c => { if (c == null || c === false) return; e.append(c.nodeType ? c : String(c)); });
-    return e;
+  }
+  for (const h of hijos.flat()) {
+    if (h === null || h === undefined || h === false) continue;
+    n.append(h.nodeType ? h : document.createTextNode(String(h)));
+  }
+  return n;
+}
+
+function norm(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function hoy() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+function fechaBonita(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  if (!m) return s || '';
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  return Number(m[3]) + ' ' + meses[Number(m[2]) - 1] + ' ' + m[1];
+}
+
+function claseEstado(e) {
+  const t = norm(e);
+  if (t === 'bueno') return 'ok';
+  if (t === 'regular') return 'warn';
+  if (t) return 'bad';
+  return '';
+}
+
+function buscarEquipo(id) {
+  const t = norm(id).trim();
+  return estado.equipos.find((e) => norm(e.id) === t) || null;
+}
+
+/* ================= BORRADOR (se guarda en el teléfono) ================= */
+function cargarBorrador() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CLAVE_BORRADOR) || 'null');
+    if (d && Array.isArray(d.ids)) return { nombre: String(d.nombre || ''), fecha: String(d.fecha || ''), ids: d.ids.map(String) };
+  } catch (e) { /* sin almacenamiento: se trabaja en memoria */ }
+  return { nombre: '', fecha: '', ids: [] };
+}
+function guardarBorrador() {
+  try { localStorage.setItem(CLAVE_BORRADOR, JSON.stringify(borrador)); } catch (e) { /* sin almacenamiento */ }
+}
+
+/* ================= API ================= */
+function apiConfigurada() {
+  return /^https:\/\/script\.google\.com\/.+\/exec$/.test(API_URL);
+}
+
+async function leerRespuesta(r) {
+  if (!r.ok) throw new Error('No se pudo conectar (' + r.status + ').');
+  let d;
+  try { d = await r.json(); } catch (e) { throw new Error('La respuesta no es válida. Revisa la implementación de Apps Script.'); }
+  if (!d.ok) throw new Error(d.error || 'Error desconocido.');
+  return d;
+}
+async function apiGet(params) {
+  return leerRespuesta(await fetch(API_URL + '?' + new URLSearchParams(params)));
+}
+async function apiPost(cuerpo) {
+  // text/plain evita la comprobación previa (preflight) que Apps Script no admite
+  return leerRespuesta(await fetch(API_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(cuerpo)
+  }));
+}
+
+/* ================= AVISOS ================= */
+function aviso(texto, esError) {
+  const a = $('#aviso');
+  if (!texto) { a.hidden = true; a.textContent = ''; return; }
+  a.className = 'aviso' + (esError ? ' error' : '');
+  a.textContent = texto;
+  a.hidden = false;
+}
+function mensajeActividad(texto, esError) {
+  const m = $('#mensajeAct');
+  if (!texto) { m.hidden = true; m.textContent = ''; return; }
+  m.className = 'msg' + (esError ? ' error' : '');
+  m.textContent = texto;
+  m.hidden = false;
+}
+
+/* ================= ACTUALIZAR ================= */
+async function actualizar() {
+  if (!apiConfigurada()) {
+    aviso('Falta configurar la página: pega la URL de Apps Script en la constante API_URL de index.html.', true);
+    return;
+  }
+  if (estado.cargando) return;
+  estado.cargando = true;
+  $('#btnActualizar').disabled = true;
+  $('#btnActualizar').textContent = 'Actualizando…';
+  try {
+    const [a, b] = await Promise.all([apiGet({ accion: 'listar' }), apiGet({ accion: 'actividades' })]);
+    estado.equipos = a.equipos;
+    estado.actividades = b.actividades;
+    estado.hora = new Date();
+    aviso('');
+  } catch (err) {
+    aviso('No se pudo actualizar: ' + err.message, true);
+  } finally {
+    estado.cargando = false;
+    $('#btnActualizar').disabled = false;
+    $('#btnActualizar').textContent = 'Actualizar';
+    render();
+  }
+}
+
+/* ================= DETALLE ================= */
+async function abrirDetalle(id) {
+  const e = buscarEquipo(id);
+  if (!e) { aviso('No se encontró el equipo ' + id + '.', true); return; }
+  const d = { equipo: e, historial: null, error: null };
+  estado.detalle = d;
+  estado.vista = 'consultar';
+  window.scrollTo(0, 0);
+  render();
+  try {
+    const r = await apiGet({ accion: 'equipo', id: e.id });
+    d.equipo = r.equipo;
+    d.historial = r.historial;
+  } catch (err) {
+    d.error = err.message;
+    d.historial = [];
+  }
+  if (estado.detalle === d) render();
+}
+
+function cerrarDetalle() {
+  estado.detalle = null;
+  render();
+}
+
+/* ================= ACTIVIDAD ================= */
+function agregarAlBorrador(id) {
+  const e = buscarEquipo(id);
+  const real = e ? e.id : id;
+  if (!borrador.ids.some((x) => norm(x) === norm(real))) {
+    borrador.ids.push(real);
+    guardarBorrador();
+  }
+}
+
+function resolverTexto(texto) {
+  const t = norm(texto).trim();
+  if (!t) return null;
+  const base = norm(texto.split('—')[0]).trim();
+  return estado.equipos.find((e) => norm(e.id) === base)
+    || estado.equipos.find((e) => norm(e.id) === t)
+    || estado.equipos.find((e) => norm(e.descripcion) === t)
+    || null;
+}
+
+function agregarDesdeCampo() {
+  const campo = $('#actEquipo');
+  const e = resolverTexto(campo.value);
+  if (!campo.value.trim()) return;
+  if (!e) {
+    mensajeActividad('No se encontró ese equipo. Revisa el ID o toca Actualizar.', true);
+    return;
+  }
+  agregarAlBorrador(e.id);
+  campo.value = '';
+  mensajeActividad('');
+  render();
+}
+
+async function enviarRegistro() {
+  const nombre = borrador.nombre.trim();
+  if (!nombre) return mensajeActividad('Escribe el nombre de la actividad.', true);
+  if (!borrador.fecha) return mensajeActividad('Elige la fecha.', true);
+  if (!borrador.ids.length) return mensajeActividad('Agrega al menos un equipo.', true);
+  if (!apiConfigurada()) return mensajeActividad('Falta configurar la URL de Apps Script en index.html.', true);
+
+  const btn = $('#btnEnviar');
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  try {
+    const r = await apiPost({ accion: 'registrarActividad', nombre, fecha: borrador.fecha, equipos: borrador.ids });
+    borrador.ids = [];
+    borrador.nombre = '';
+    guardarBorrador();
+    mensajeActividad('Registro enviado: “' + nombre + '” con ' + r.total + (r.total === 1 ? ' equipo.' : ' equipos.'));
+    await actualizar();
+  } catch (err) {
+    mensajeActividad('No se pudo enviar: ' + err.message + ' Revisa en Consultar > Actividades recientes antes de volver a enviar.', true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enviar registro';
+    render();
+  }
+}
+
+/* ================= RENDER ================= */
+function render() {
+  renderEstado();
+  renderTabs();
+  renderConsultar();
+  renderActividad();
+}
+
+function renderEstado() {
+  $('#estadoCarga').textContent = estado.hora
+    ? 'Actualizado a las ' + estado.hora.toLocaleTimeString('es-PA', { hour: '2-digit', minute: '2-digit' })
+    : 'Sin cargar';
+}
+
+function renderTabs() {
+  const enConsultar = estado.vista === 'consultar';
+  $('#tabConsultar').setAttribute('aria-selected', String(enConsultar));
+  $('#tabActividad').setAttribute('aria-selected', String(!enConsultar));
+  $('#vistaConsultar').hidden = !enConsultar;
+  $('#vistaActividad').hidden = enConsultar;
+  const b = $('#badge');
+  b.hidden = borrador.ids.length === 0;
+  b.textContent = borrador.ids.length;
+}
+
+function tarjetaEquipo(e) {
+  return el('li', null,
+    el('button', { class: 'item', type: 'button', onclick: () => abrirDetalle(e.id) },
+      el('div', { class: 'l1' }, el('span', { class: 'nombre' }, e.descripcion || e.id), el('span', { class: 'id' }, e.id)),
+      el('div', { class: 'meta' },
+        el('span', { class: 'tag' }, e.tipo || 'Equipo'), ' ',
+        e.marca || '', ' ',
+        e.estado ? el('span', { class: 'tag ' + claseEstado(e.estado) }, e.estado) : null)
+    )
+  );
+}
+
+function renderConsultar() {
+  const enDetalle = !!estado.detalle;
+  $('#modos').hidden = enDetalle;
+  $('#panelEquipos').hidden = enDetalle || estado.modo !== 'equipos';
+  $('#panelActividades').hidden = enDetalle || estado.modo !== 'actividades';
+  $('#panelDetalle').hidden = !enDetalle;
+
+  document.querySelectorAll('#modos .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.modo === estado.modo)));
+
+  // Filtro por tipo: las opciones salen de los tipos que hay en el inventario
+  const tipos = [...new Set(estado.equipos.map((e) => e.tipo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  if (estado.tipo !== 'Todos' && !tipos.includes(estado.tipo)) estado.tipo = 'Todos';
+  const sel = $('#filtroTipo');
+  sel.replaceChildren(el('option', { value: 'Todos' }, 'Todos los tipos'), ...tipos.map((t) => el('option', { value: t }, t)));
+  sel.value = estado.tipo;
+
+  // Lista de equipos
+  const q = norm(estado.busqueda);
+  const filtrados = estado.equipos.filter((e) =>
+    (estado.tipo === 'Todos' || e.tipo === estado.tipo) &&
+    (!q || norm([e.id, e.tipo, e.descripcion, e.marca, e.conectores].join(' ')).includes(q)));
+  $('#contador').textContent = estado.equipos.length
+    ? filtrados.length + (filtrados.length === 1 ? ' equipo' : ' equipos')
+    : '';
+  const lista = $('#lista');
+  lista.replaceChildren();
+  if (!filtrados.length) {
+    lista.append(el('li', { class: 'vacio' }, estado.equipos.length ? 'No hay equipos que coincidan.' : 'Toca Actualizar para cargar el inventario.'));
+  } else {
+    filtrados.forEach((e) => lista.append(tarjetaEquipo(e)));
   }
 
-  let tt;
-  function toast(t, bad) {
-    const e = $('#toast'); e.textContent = t; e.className = 'show' + (bad ? ' bad' : '');
-    clearTimeout(tt); tt = setTimeout(() => { e.className = ''; }, 3200);
+  // Actividades recientes
+  const cont = $('#listaActividades');
+  cont.replaceChildren();
+  if (!estado.actividades.length) {
+    cont.append(el('p', { class: 'vacio' }, 'Todavía no hay actividades registradas.'));
+  } else {
+    estado.actividades.forEach((a) => cont.append(
+      el('details', { class: 'act' },
+        el('summary', null, el('span', null, a.nombre), el('span', { class: 'id' }, fechaBonita(a.fecha))),
+        el('ul', null, a.equipos.length
+          ? a.equipos.map((x) => el('li', null, x.descripcion || x.id, ' ', el('span', { class: 'id' }, x.id)))
+          : el('li', null, 'Sin equipos registrados.'))
+      )));
   }
 
-  function load(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
-  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  renderDetalle();
+}
 
-  async function apiGet(p) { const r = await fetch(API_URL + '?' + new URLSearchParams(p)); return r.json(); }
-  async function apiPost(b) {
-    // text/plain evita la comprobación previa (preflight) de CORS, que Apps Script no admite
-    const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(b) });
-    return r.json();
-  }
+function renderDetalle() {
+  const box = $('#panelDetalle');
+  box.replaceChildren();
+  const d = estado.detalle;
+  if (!d) return;
+  const e = d.equipo;
 
-  // ---------- Estado ----------
-  let D = { cables: [], tipos: [], estados: [], ubicaciones: [], requierePin: false };
-  const porId = id => D.cables.find(c => c.id.toUpperCase() === String(id).trim().toUpperCase());
-  let draft = Object.assign({ actividad: '', responsable: '', destino: null, items: [] }, load('inv_draft', {}));
-  if (!Array.isArray(draft.items)) draft.items = [];
-  const saveDraft = () => save('inv_draft', draft);
-  let hist = null;
-  const F = { q: '', tipo: '', estado: '', ubic: '', todos: false };
+  const campos = [
+    ['Tipo', e.tipo],
+    ['Longitud', e.longitud ? e.longitud + ' m' : ''],
+    ['Conectores', e.conectores],
+    ['Marca / Modelo', e.marca],
+    ['Color de cinta', e.cinta],
+    ['Estado', e.estado],
+    ['Asignado a', e.asignado],
+    ['Última revisión', e.revision ? fechaBonita(e.revision) : ''],
+    ['Notas', e.notas]
+  ].filter(([, v]) => v);
+  const dl = el('dl', null, campos.map(([k, v]) => [el('dt', null, k), el('dd', null, k === 'Estado' ? el('span', { class: 'tag ' + claseEstado(v) }, v) : v)]));
 
-  function claseEstado(e) {
-    e = (e || '').toLowerCase();
-    if (e === 'bueno') return 'ok';
-    if (e === 'con ruido') return 'warn';
-    if (e === 'reparar' || e === 'baja') return 'bad';
-    return '';
-  }
+  let historial;
+  if (d.historial === null) historial = el('p', { class: 'meta' }, 'Cargando…');
+  else if (d.error) historial = el('p', { class: 'meta' }, 'No se pudo cargar el historial: ' + d.error);
+  else if (!d.historial.length) historial = el('p', { class: 'meta' }, 'Todavía no se ha usado en ninguna actividad.');
+  else historial = el('ul', { class: 'hist' }, d.historial.map((h) => el('li', null, fechaBonita(h.fecha), ' · ', h.nombre)));
 
-  function llenar(sel, opciones, primero, actual) {
-    sel.textContent = '';
-    if (primero != null) sel.append(h('option', { value: '' }, primero));
-    opciones.forEach(o => sel.append(h('option', { value: o }, o)));
-    sel.value = actual || '';
-  }
-
-  // ---------- Navegación ----------
-  function ir(t) {
-    ['consultar', 'actividad', 'historial'].forEach(x => {
-      $('#t-' + x).hidden = x !== t;
-      $('#n-' + x).setAttribute('aria-selected', String(x === t));
-    });
-    if (t === 'historial') cargarHistorial();
-    window.scrollTo(0, 0);
-  }
-  ['consultar', 'actividad', 'historial'].forEach(x => { $('#n-' + x).onclick = () => ir(x); });
-
-  // ---------- Consultar ----------
-  const hayFiltro = () => !!(F.q.trim() || F.tipo || F.estado || F.ubic || F.todos);
-
-  function chip(texto, activo, onclick) {
-    return h('button', { type: 'button', class: 'chipb', 'aria-pressed': String(activo), onclick }, texto);
-  }
-
-  function pintarChips() {
-    const cuenta = (k, v) => D.cables.filter(c => c[k] === v).length;
-    const u = $('#chipsUbic'); u.textContent = '';
-    D.ubicaciones.forEach(x => u.append(chip(x + ' (' + cuenta('ubicacion', x) + ')', F.ubic === x,
-      () => { F.ubic = F.ubic === x ? '' : x; pintarChips(); pintarLista(); })));
-    const e = $('#chipsEstado'); e.textContent = '';
-    D.estados.forEach(x => e.append(chip(x + ' (' + cuenta('estado', x) + ')', F.estado === x,
-      () => { F.estado = F.estado === x ? '' : x; pintarChips(); pintarLista(); })));
-  }
-
-  function limpiarFiltros() {
-    F.q = ''; F.tipo = ''; F.estado = ''; F.ubic = ''; F.todos = false;
-    $('#q').value = ''; $('#fTipo').value = '';
-    pintarChips(); pintarLista();
-  }
-
-  function pintarLista() {
-    const total = D.cables.length;
-    const box = $('#lista'); box.textContent = '';
-    if (!hayFiltro()) {
-      $('#cuenta').textContent = total + (total === 1 ? ' equipo en total' : ' equipos en total');
-      box.append(h('div', { class: 'vacio' },
-        h('p', null, 'Busca por ID o nombre, o toca un filtro para ver los equipos.'),
-        h('button', { onclick: () => { F.todos = true; pintarLista(); } }, 'Ver todos (' + total + ')')));
-      return;
-    }
-    const q = F.q.trim().toLowerCase();
-    const r = D.cables.filter(c =>
-      (!F.tipo || c.tipo === F.tipo) && (!F.estado || c.estado === F.estado) && (!F.ubic || c.ubicacion === F.ubic) &&
-      (!q || [c.id, c.descripcion, c.tipo, c.marca, c.ultimaActividad, c.notas, c.color].join(' ').toLowerCase().includes(q)));
-    $('#cuenta').textContent = r.length + ' de ' + total + ' equipos';
-    box.append(h('button', { class: 'peq', onclick: limpiarFiltros }, 'Quitar filtros / ocultar lista'));
-    if (!r.length) { box.append(h('p', { class: 'vacio' }, 'No hay equipos con ese filtro.')); return; }
-    r.forEach(c => box.append(
-      h('button', { class: 'item', onclick: () => abrirFicha(c.id) },
-        h('div', { class: 'fila' },
-          h('strong', null, c.descripcion || c.tipo || c.id),
-          h('span', { class: 'badge ' + claseEstado(c.estado) }, c.estado || '—')),
-        h('div', { class: 'sub' }, c.id + ' · ' + (c.ubicacion || 'sin ubicación')))));
-  }
-
-  function abrirFicha(id) {
-    const c = porId(id);
-    if (!c) { toast('No encontré el ID ' + id + ' en el inventario.', true); return; }
-    const dlg = $('#dlg'); dlg.textContent = '';
-    const campos = [['Tipo', 'tipo'], ['Longitud (m)', 'longitud'], ['Conectores', 'conectores'], ['Marca / Modelo', 'marca'],
-                    ['Color de cinta', 'color'], ['Ubicación', 'ubicacion'], ['Última actividad', 'ultimaActividad'],
-                    ['Última revisión', 'revision'], ['Notas', 'notas']];
-    const dl = h('dl');
-    campos.forEach(([et, k]) => { if (c[k]) dl.append(h('dt', null, et), h('dd', null, c[k])); });
-    const yaEsta = draft.items.some(i => i.id.toUpperCase() === c.id.toUpperCase());
-    dlg.append(
-      h('h2', null, c.descripcion || c.tipo || c.id),
-      h('div', { class: 'sub' }, c.id + ' · ', h('span', { class: 'badge ' + claseEstado(c.estado) }, c.estado || 'Sin estado')),
+  const yaEsta = borrador.ids.some((x) => norm(x) === norm(e.id));
+  box.append(
+    el('button', { class: 'btn link', type: 'button', onclick: cerrarDetalle }, '← Volver a la lista'),
+    el('article', { class: 'card' },
+      el('div', { class: 'id' }, e.id),
+      el('h2', null, e.descripcion || e.id),
       dl,
-      h('div', { class: 'botones' },
-        h('button', { class: 'pri', disabled: yaEsta, onclick: () => { agregar(c.id); dlg.close(); ir('actividad'); } },
-          yaEsta ? 'Ya está en la actividad' : 'Agregar a la actividad'),
-        h('button', { onclick: () => { dlg.close(); $('#hq').value = c.id; ir('historial'); } }, 'Ver historial'),
-        h('button', { onclick: () => dlg.close() }, 'Cerrar')));
-    dlg.showModal();
+      el('h3', null, 'Últimas actividades'),
+      historial,
+      el('div', { class: 'acciones' },
+        el('button', {
+          class: 'btn', type: 'button', disabled: yaEsta,
+          onclick: () => { agregarAlBorrador(e.id); render(); }
+        }, yaEsta ? 'Ya está en la actividad' : 'Agregar a la actividad'),
+        yaEsta ? el('button', { class: 'btn sec', type: 'button', onclick: () => { estado.vista = 'actividad'; render(); } }, 'Ver actividad') : null)
+    )
+  );
+}
+
+function renderActividad() {
+  if ($('#actNombre').value !== borrador.nombre) $('#actNombre').value = borrador.nombre;
+  if (!borrador.fecha) { borrador.fecha = hoy(); guardarBorrador(); }
+  if ($('#actFecha').value !== borrador.fecha) $('#actFecha').value = borrador.fecha;
+
+  const dl = $('#listaEquipos');
+  dl.replaceChildren();
+  estado.equipos.forEach((e) => dl.append(el('option', { value: e.id + ' — ' + (e.descripcion || '') })));
+
+  $('#totalUso').textContent = borrador.ids.length ? '(' + borrador.ids.length + ')' : '';
+  const ul = $('#listaUso');
+  ul.replaceChildren();
+  if (!borrador.ids.length) {
+    ul.append(el('li', { class: 'vacio', style: 'display:block;border:0;background:transparent' }, 'Aún no has agregado equipos.'));
   }
+  borrador.ids.forEach((id) => {
+    const e = buscarEquipo(id);
+    ul.append(el('li', null,
+      el('span', null, el('span', { class: 'nombre' }, e ? (e.descripcion || e.id) : id), ' ', el('span', { class: 'id' }, id)),
+      el('button', {
+        class: 'quitar', type: 'button', 'aria-label': 'Quitar ' + id,
+        onclick: () => { borrador.ids = borrador.ids.filter((x) => x !== id); guardarBorrador(); render(); }
+      }, 'Quitar')));
+  });
+  $('#btnVaciar').disabled = !borrador.ids.length && !borrador.nombre;
+}
 
-  $('#q').oninput = e => { F.q = e.target.value; pintarLista(); };
-  $('#fTipo').onchange = e => { F.tipo = e.target.value; pintarLista(); };
+/* ================= EVENTOS ================= */
+function prepararEventos() {
+  $('#btnActualizar').addEventListener('click', actualizar);
 
-  // ---------- Actividad ----------
-  function extraerId(t) {
-    t = String(t || '').trim();
-    if (!t) return '';
-    try { const u = new URL(t); const v = u.searchParams.get('id'); if (v) return v; } catch (e) {}
-    const m = t.match(/[?&]id=([^&\s]+)/i);
-    if (m) return decodeURIComponent(m[1]);
-    return /^[A-Za-z0-9_-]+$/.test(t) ? t : '';
-  }
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+    estado.vista = t.dataset.vista;
+    render();
+  }));
+  document.querySelectorAll('#modos .chip').forEach((c) => c.addEventListener('click', () => {
+    estado.modo = c.dataset.modo;
+    render();
+  }));
+  $('#filtroTipo').addEventListener('change', (ev) => {
+    estado.tipo = ev.target.value;
+    renderConsultar();
+  });
+  $('#buscar').addEventListener('input', (ev) => { estado.busqueda = ev.target.value; renderConsultar(); });
 
-  function agregar(id) {
-    const c = porId(id);
-    if (!c) { toast('El ID "' + id + '" no está en el inventario.', true); return false; }
-    if (draft.items.some(i => i.id.toUpperCase() === c.id.toUpperCase())) { toast(c.id + ' ya está en la lista.'); return false; }
-    draft.items.push({ id: c.id, estado: c.estado || '', observacion: '' });
-    saveDraft(); pintarItems();
-    toast('Agregado: ' + c.id + (c.descripcion ? ' – ' + c.descripcion : ''));
-    return true;
-  }
+  $('#actNombre').addEventListener('input', (ev) => { borrador.nombre = ev.target.value; guardarBorrador(); renderTabs(); $('#btnVaciar').disabled = false; });
+  $('#actFecha').addEventListener('change', (ev) => { borrador.fecha = ev.target.value; guardarBorrador(); });
+  $('#btnAgregar').addEventListener('click', agregarDesdeCampo);
+  $('#actEquipo').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); agregarDesdeCampo(); } });
+  $('#btnEnviar').addEventListener('click', enviarRegistro);
+  $('#btnVaciar').addEventListener('click', () => {
+    if (!confirm('¿Vaciar la actividad en curso?')) return;
+    borrador.ids = [];
+    borrador.nombre = '';
+    guardarBorrador();
+    mensajeActividad('');
+    render();
+  });
+}
 
-  function pintarItems() {
-    const n = draft.items.length;
-    $('#badge2').textContent = n;
-    const b = $('#badge'); b.textContent = n; b.hidden = !n;
-    const btn = $('#btnReg'); btn.textContent = 'Registrar actividad (' + n + ')'; btn.disabled = !n;
-    $('#btnVaciar').disabled = !n;
-    const box = $('#items'); box.textContent = '';
-    draft.items.forEach((it, i) => {
-      const c = porId(it.id) || {};
-      const opts = D.estados.slice();
-      if (it.estado && !opts.includes(it.estado)) opts.push(it.estado);
-      const sel = h('select', { onchange: e => { it.estado = e.target.value; saveDraft(); } });
-      opts.forEach(o => sel.append(h('option', { value: o }, o)));
-      sel.value = it.estado;
-      box.append(h('div', { class: 'item' },
-        h('div', { class: 'fila' },
-          h('strong', null, it.id + ' · ' + (c.descripcion || c.tipo || '')),
-          h('button', { class: 'x', 'aria-label': 'Quitar ' + it.id, onclick: () => { draft.items.splice(i, 1); saveDraft(); pintarItems(); } }, '✕')),
-        h('div', { class: 'sub' }, 'Ahora: ' + (c.ubicacion || '—') + (c.ultimaActividad ? ' · última actividad: ' + c.ultimaActividad : '')),
-        h('label', null, 'Estado', sel),
-        h('label', null, 'Observación (opcional)',
-          h('input', { value: it.observacion, placeholder: 'Ej. se escucha ruido en un extremo',
-                       oninput: e => { it.observacion = e.target.value; saveDraft(); } }))));
-    });
-  }
-
-  $('#btnAdd').onclick = () => {
-    const v = extraerId($('#idAdd').value) || $('#idAdd').value.trim();
-    if (!v) return;
-    if (agregar(v)) $('#idAdd').value = '';
-  };
-  $('#idAdd').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#btnAdd').click(); } };
-  $('#btnVaciar').onclick = () => {
-    if (draft.items.length && confirm('¿Vaciar la lista de etiquetas?')) { draft.items = []; saveDraft(); pintarItems(); }
-  };
-
-  $('#actividad').value = draft.actividad;
-  $('#responsable').value = draft.responsable;
-  $('#actividad').oninput = e => { draft.actividad = e.target.value; saveDraft(); };
-  $('#responsable').oninput = e => { draft.responsable = e.target.value; saveDraft(); };
-  function pintarDestinos() {
-    const box = $('#destinos'); box.textContent = '';
-    const op = D.ubicaciones.map(u => [u, 'Mover a ' + u]).concat([['', 'No cambian de lugar (solo estado)']]);
-    op.forEach(([val, txt]) => box.append(h('button', {
-      type: 'button', 'aria-pressed': String(draft.destino === val),
-      onclick: () => { draft.destino = val; saveDraft(); pintarDestinos(); }
-    }, txt)));
-  }
-
-  async function registrar() {
-    const msg = $('#msgReg');
-    const falla = t => { msg.textContent = t; msg.className = 'err'; };
-    if (!draft.actividad.trim()) return falla('Escribe el nombre de la actividad.');
-    if (!draft.responsable.trim()) return falla('Escribe quién registra.');
-    if (draft.destino === null || draft.destino === undefined) return falla('Elige dónde quedan los equipos (o "No cambian de lugar").');
-    if (!draft.items.length) return falla('Agrega al menos una etiqueta.');
-    const btn = $('#btnReg'); btn.disabled = true;
-    msg.textContent = 'Guardando…'; msg.className = '';
-    try {
-      const r = await apiPost({
-        action: 'registrar', pin: $('#pin').value, actividad: draft.actividad.trim(), responsable: draft.responsable.trim(),
-        destino: draft.destino,
-        items: draft.items.map(i => ({ id: i.id, estado: i.estado, observacion: i.observacion }))
-      });
-      if (!r.ok) throw new Error(r.error || 'Error desconocido');
-      draft.items = []; draft.actividad = ''; saveDraft();
-      $('#actividad').value = '';
-      msg.textContent = 'Actividad registrada: ' + r.registrados + (r.registrados === 1 ? ' equipo' : ' equipos') + ' (' + r.traslados + ' movidos de lugar, ' + r.revisiones + ' sin mover). Código ' + r.codigo + '.';
-      msg.className = 'okm';
-      hist = null;
-      await cargar();
-    } catch (e) {
-      falla((e instanceof TypeError ? 'No se pudo conectar. Revisa tu conexión; la lista sigue guardada en este celular.' : (e.message || String(e))));
-    } finally { pintarItems(); }
-  }
-  $('#btnReg').onclick = registrar;
-
-  // ---------- Historial ----------
-  async function cargarHistorial(force) {
-    if (hist && !force) { pintarHistorial(); return; }
-    const box = $('#hlista'); box.textContent = 'Cargando…';
-    try {
-      const r = await apiGet({ action: 'movimientos', limite: 400 });
-      if (!r.ok) throw new Error(r.error);
-      hist = r.movimientos; pintarHistorial();
-    } catch (e) {
-      box.textContent = ''; box.append(h('p', { class: 'err' }, 'No se pudo cargar el historial: ' + (e.message || e)));
-    }
-  }
-
-  function destinoGrupo(grp) {
-    const u = [...new Set(grp.items.map(m => m.ubicacion).filter(Boolean))];
-    return u.length === 1 ? '→ ' + u[0] : '';
-  }
-
-  function pintarHistorial() {
-    const q = $('#hq').value.trim().toLowerCase();
-    const box = $('#hlista'); box.textContent = '';
-    const rows = (hist || []).filter(m => !q || [m.id, m.descripcion, m.actividad, m.responsable, m.ubicacion, m.accion].join(' ').toLowerCase().includes(q));
-    if (!rows.length) { box.append(h('p', { class: 'vacio' }, 'No hay movimientos para mostrar.')); return; }
-    const g = new Map();
-    rows.forEach((m, i) => {
-      const k = m.codigo || ('x' + i);
-      if (!g.has(k)) g.set(k, { head: m, items: [] });
-      g.get(k).items.push(m);
-    });
-    g.forEach(grp => {
-      const m0 = grp.head;
-      box.append(h('details', { class: 'grupo' },
-        h('summary', null,
-          h('div', { class: 'fila' },
-            h('strong', null, m0.actividad || 'Movimiento sin actividad'),
-            h('span', { class: 'chip' }, grp.items.length + (grp.items.length === 1 ? ' elemento' : ' elementos'))),
-          h('div', { class: 'sub' }, [m0.fecha, m0.responsable, destinoGrupo(grp)].filter(Boolean).join(' · '))),
-        grp.items.map(m => h('div', { class: 'mov' },
-          h('strong', null, m.id), ' ', m.descripcion || '',
-          m.accion ? h('span', { class: 'chip', style: 'margin-left:6px' }, m.accion) : null,
-          m.observacion ? h('div', { class: 'sub' }, '“' + m.observacion + '”') : null))));
-    });
-  }
-  $('#hq').oninput = pintarHistorial;
-
-  // ---------- Carga ----------
-  async function cargar() {
-    const r = await apiGet({ action: 'init' });
-    if (!r.ok) throw new Error(r.error);
-    D = r;
-    llenar($('#fTipo'), D.tipos, 'Todos', F.tipo);
-    $('#ids').textContent = '';
-    D.cables.forEach(c => $('#ids').append(h('option', { value: c.id }, c.descripcion)));
-    $('#pinBox').hidden = !D.requierePin;
-    pintarChips(); pintarLista(); pintarDestinos(); pintarItems();
-  }
-
-  $('#btnRefrescar').onclick = async () => {
-    try { hist = null; await cargar(); toast('Datos actualizados'); } catch (e) { toast('No se pudo actualizar: ' + (e.message || e), true); }
-  };
-
-  async function iniciar() {
-    if (API_URL.indexOf('PEGA_AQUI') !== -1) {
-      $('#lista').append(h('p', { class: 'err' }, 'Falta configurar la dirección de la API (API_URL) al inicio del archivo index.html.'));
-      return;
-    }
-    $('#lista').textContent = 'Cargando…';
-    try { await cargar(); }
-    catch (e) {
-      $('#lista').textContent = '';
-      $('#lista').append(h('p', { class: 'err' }, 'No se pudo cargar el inventario: ' + (e.message || e)), h('button', { class: 'pri', onclick: iniciar }, 'Reintentar'));
-      return;
-    }
-    const id = new URLSearchParams(location.search).get('id');
-    if (id) abrirFicha(id);
-  }
-  pintarItems();
-  iniciar();
-})();
+/* ================= INICIO ================= */
+async function iniciar() {
+  prepararEventos();
+  render();
+  await actualizar();
+  // Una etiqueta NFC abre la página con ?id=CAB-001
+  const id = new URLSearchParams(location.search).get('id');
+  if (id && estado.equipos.length) abrirDetalle(id);
+}
+iniciar();
 </script>
 </body>
 </html>
